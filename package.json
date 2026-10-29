@@ -1,13 +1,14 @@
 {
   "name": "aleixpieres.github.io",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
+  "description": "Aleix Pieres — Cloud and Data Engineer portfolio",
+  "private": true,
+  "scripts": {
+    "start": "http-server . -a 127.0.0.1 -p 4173 -c-1",
+    "test": "node --test tests/portfolio.test.cjs"
   },
-"scripts": {
-  "start": "http-server .",
-  "test": "echo \"Error: no test specified\" && exit 1"
-}
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "jsdom": "^26.1.0"
+  }
 }
