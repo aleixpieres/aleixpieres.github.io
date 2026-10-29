@@ -175,7 +175,7 @@ test("projects stay hidden until a spin, then each appears exactly once per roun
   const cards = [...doc.querySelectorAll(".project-card")];
   assert.ok(cards.every((card) => card.hidden));
   assert.equal(doc.querySelector("#project-slot").hidden, false);
-  assert.equal(doc.querySelector("#slot-remaining").textContent, "3 / 3");
+  assert.equal(doc.querySelector("#slot-remaining"), null);
   for (let round = 0; round < 3; round++) {
     const seen = new Set();
     for (let spin = 0; spin < cards.length; spin++) {
@@ -184,10 +184,7 @@ test("projects stay hidden until a spin, then each appears exactly once per roun
       assert.equal(visible.length, 1);
       assert.ok(!seen.has(visible[0]));
       seen.add(visible[0]);
-      assert.equal(
-        doc.querySelector("#slot-remaining").textContent,
-        `${cards.length - spin - 1} / ${cards.length}`,
-      );
+      assert.equal(doc.querySelector("#slot-remaining"), null);
       assert.ok(
         doc
           .querySelector("#slot-status")
@@ -247,7 +244,7 @@ test("animated spins lock out repeated clicks and reveal only on completion", ()
   assert.equal(timers.length, 1);
   timers.shift()();
   assert.equal(button.disabled, false);
-  assert.equal(doc.querySelector("#slot-remaining").textContent, "2 / 3");
+  assert.equal(doc.querySelector("#slot-remaining"), null);
   assert.equal(
     [...doc.querySelectorAll(".project-card")].filter((card) => !card.hidden)
       .length,
@@ -266,7 +263,7 @@ test("animated spins lock out repeated clicks and reveal only on completion", ()
   button.click();
   assert.equal(timers.length, 1);
   timers.shift()();
-  assert.equal(doc.querySelector("#slot-remaining").textContent, "1 / 3");
+  assert.equal(doc.querySelector("#slot-remaining"), null);
   dom.window.close();
 });
 

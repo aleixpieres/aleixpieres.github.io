@@ -34,15 +34,11 @@ const projects = [...document.querySelectorAll(".project-card")];
 const slotMachine = document.querySelector("#project-slot");
 const spinButton = document.querySelector("#spin-project");
 const slotStatus = document.querySelector("#slot-status");
-const remainingLabel = document.querySelector("#slot-remaining");
 const results = document.querySelector("#project-results");
 const strips = [...document.querySelectorAll(".reel-strip")];
 const emptyResult = document.querySelector("#slot-empty");
 let remaining = [];
 let spinning = false;
-function updateRemaining() {
-  remainingLabel.textContent = remaining.length + " / " + projects.length;
-}
 if (projects.length) {
   remaining = [...projects];
   projects.forEach((project) => {
@@ -50,7 +46,7 @@ if (projects.length) {
   });
   results.classList.add("slot-results");
   slotMachine.hidden = false;
-  updateRemaining();
+
 }
 spinButton.addEventListener("click", () => {
   if (spinning || !projects.length) return;
@@ -58,7 +54,7 @@ spinButton.addEventListener("click", () => {
   spinButton.disabled = true;
   spinButton.textContent = "Spinning...";
   if (!remaining.length) remaining = [...projects];
-  updateRemaining();
+
   const chosenIndex = Math.floor(Math.random() * remaining.length);
   const chosen = remaining.splice(chosenIndex, 1)[0];
   const symbol = String(projects.indexOf(chosen) + 1).padStart(2, "0");
@@ -96,7 +92,7 @@ spinButton.addEventListener("click", () => {
     chosen.hidden = false;
     emptyResult.hidden = true;
     results.setAttribute("aria-busy", "false");
-    updateRemaining();
+
     const title = chosen.querySelector("h3");
     title.setAttribute("tabindex", "-1");
     // Respect a visitor who tabs elsewhere while the reels are moving.
@@ -110,10 +106,7 @@ spinButton.addEventListener("click", () => {
       title.textContent +
       " revealed. " +
       (remaining.length
-        ? remaining.length +
-          " of " +
-          projects.length +
-          " projects left in this round."
+        ? "Spin again to discover another project."
         : "Round complete. Your next spin starts a fresh round.");
     spinButton.textContent = remaining.length
       ? "Spin again"
