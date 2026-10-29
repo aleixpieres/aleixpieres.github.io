@@ -29,57 +29,104 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest(".nav")) closeMenu();
 });
 
-document.querySelector(".filters").hidden = false;
-const filters = document.querySelectorAll("[data-filter]");
-const projects = document.querySelectorAll("[data-category]");
-const dealButton = document.querySelector("#deal-project");
-const dealStatus = document.querySelector("#deal-status");
-let lastDealt = null;
-dealButton.hidden = false;
-dealButton.addEventListener("click", () => {
-  const visible = [...projects].filter((project) => !project.hidden);
-  if (!visible.length) return;
-  const candidates =
-    visible.length > 1
-      ? visible.filter((project) => project !== lastDealt)
-      : visible;
-  const chosen = candidates[Math.floor(Math.random() * candidates.length)];
-  projects.forEach((project) => project.classList.remove("is-dealt"));
-  chosen.classList.add("is-dealt");
-  lastDealt = chosen;
-  const heading = chosen.querySelector("h3");
-  heading.setAttribute("tabindex", "-1");
-  heading.focus({ preventScroll: true });
+// Draw without replacement. The pool refills only after a complete round.
+const projects = [...document.querySelectorAll(".project-card")];
+const slotMachine = document.querySelector("#project-slot");
+const spinButton = document.querySelector("#spin-project");
+const slotStatus = document.querySelector("#slot-status");
+const remainingLabel = document.querySelector("#slot-remaining");
+const results = document.querySelector("#project-results");
+const strips = [...document.querySelectorAll(".reel-strip")];
+const emptyResult = document.querySelector("#slot-empty");
+let remaining = [];
+let spinning = false;
+function updateRemaining() {
+  remainingLabel.textContent = remaining.length + " / " + projects.length;
+}
+if (projects.length) {
+  remaining = [...projects];
+  projects.forEach((project) => {
+    project.hidden = true;
+  });
+  results.classList.add("slot-results");
+  slotMachine.hidden = false;
+  updateRemaining();
+}
+spinButton.addEventListener("click", () => {
+  if (spinning || !projects.length) return;
+  spinning = true;
+  spinButton.disabled = true;
+  spinButton.textContent = "Spinning...";
+  if (!remaining.length) remaining = [...projects];
+  updateRemaining();
+  const chosenIndex = Math.floor(Math.random() * remaining.length);
+  const chosen = remaining.splice(chosenIndex, 1)[0];
+  const symbol = String(projects.indexOf(chosen) + 1).padStart(2, "0");
   const reducedMotion = window.matchMedia?.(
     "(prefers-reduced-motion: reduce)",
   ).matches;
-  chosen.scrollIntoView?.({
-    behavior: reducedMotion ? "instant" : "smooth",
-    block: "center",
+  projects.forEach((project) => {
+    project.hidden = true;
   });
-  dealStatus.textContent = `Your project: ${heading.textContent}`;
-  dealButton.innerHTML =
-    'Deal another project <span aria-hidden="true">&#9856;</span>';
+  results.setAttribute("aria-busy", "true");
+  emptyResult.hidden = false;
+  emptyResult.textContent = "Choosing your next project...";
+  slotStatus.textContent = "Spinning. A project will be revealed shortly.";
+  strips.forEach((strip, reel) => {
+    strip.replaceChildren();
+    const cells = reducedMotion ? 1 : 15;
+    for (let i = 0; i < cells; i++) {
+      const cell = document.createElement("span");
+      cell.className = "reel-cell";
+      cell.textContent =
+        i === cells - 1
+          ? symbol
+          : String(((i + reel) % projects.length) + 1).padStart(2, "0");
+      strip.append(cell);
+    }
+  });
+  const reveal = () => {
+    slotMachine.classList.remove("is-spinning");
+    strips.forEach((strip) => {
+      const cell = document.createElement("span");
+      cell.className = "reel-cell";
+      cell.textContent = symbol;
+      strip.replaceChildren(cell);
+    });
+    chosen.hidden = false;
+    emptyResult.hidden = true;
+    results.setAttribute("aria-busy", "false");
+    updateRemaining();
+    const title = chosen.querySelector("h3");
+    title.setAttribute("tabindex", "-1");
+    // Respect a visitor who tabs elsewhere while the reels are moving.
+    if (
+      document.activeElement === spinButton ||
+      document.activeElement === document.body
+    ) {
+      title.focus({ preventScroll: true });
+    }
+    slotStatus.textContent =
+      title.textContent +
+      " revealed. " +
+      (remaining.length
+        ? remaining.length +
+          " of " +
+          projects.length +
+          " projects left in this round."
+        : "Round complete. Your next spin starts a fresh round.");
+    spinButton.textContent = remaining.length
+      ? "Spin again"
+      : "New round / Spin again";
+    spinButton.disabled = false;
+    spinning = false;
+  };
+  if (reducedMotion) reveal();
+  else {
+    slotMachine.classList.add("is-spinning");
+    window.setTimeout(reveal, 1450);
+  }
 });
-filters.forEach((button) =>
-  button.addEventListener("click", () => {
-    const category = button.dataset.filter;
-    filters.forEach((item) => {
-      item.classList.toggle("is-active", item === button);
-      item.setAttribute("aria-pressed", String(item === button));
-    });
-    let count = 0;
-    projects.forEach((project) => {
-      project.classList.remove("is-dealt");
-      project.hidden =
-        category !== "all" && project.dataset.category !== category;
-      if (!project.hidden) count++;
-    });
-    document.querySelector("#filter-status").textContent =
-      `${count} projects shown: ${button.textContent}.`;
-    dealStatus.textContent = "";
-  }),
-);
 
 const copyButton = document.querySelector("#copy-email");
 const copyStatus = document.querySelector("#copy-status");

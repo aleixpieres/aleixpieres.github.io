@@ -12,6 +12,7 @@ function page(setup = () => {}) {
     url: "https://aleixpieres.github.io/",
     runScripts: "outside-only",
   });
+  dom.window.matchMedia = () => ({ matches: true });
   setup(dom.window);
   dom.window.eval(script);
   return dom;
@@ -47,39 +48,12 @@ test("essential content and native disclosures work without JavaScript", () => {
   const doc = dom.window.document;
   assert.equal(doc.querySelectorAll(".project-card:not([hidden])").length, 3);
   assert.equal(doc.querySelectorAll("details > summary").length, 4);
-  assert.ok(doc.querySelector("#deal-project").hidden);
-  assert.ok(doc.querySelector(".filters").hidden);
+  assert.ok(doc.querySelector("#project-slot").hidden);
   assert.ok(doc.querySelector(".menu-toggle").hidden);
   assert.ok(!doc.querySelector(".nav-links").hidden);
   assert.ok(
     doc.querySelector("a[download]").getAttribute("href").endsWith(".pdf"),
   );
-  dom.window.close();
-});
-
-test("project filters expose matching projects and announce the result", () => {
-  const dom = page();
-  const doc = dom.window.document;
-  for (const category of ["systems", "software", "all"]) {
-    doc.querySelector(`[data-filter="${category}"]`).click();
-    const visible = [...doc.querySelectorAll(".project-card")].filter(
-      (el) => !el.hidden,
-    );
-    assert.equal(visible.length, { systems: 2, software: 1, all: 3 }[category]);
-    assert.ok(
-      visible.every(
-        (el) => category === "all" || el.dataset.category === category,
-      ),
-    );
-    assert.equal(
-      doc.querySelectorAll('[data-filter][aria-pressed="true"]').length,
-      1,
-    );
-    assert.match(
-      doc.querySelector("#filter-status").textContent,
-      new RegExp(`${visible.length} projects shown`),
-    );
-  }
   dom.window.close();
 });
 
@@ -167,45 +141,6 @@ test("metadata is valid and outbound tabs use safe link attributes", () => {
   dom.window.close();
 });
 
-test("dealing chooses a visible project without immediate repeats and moves keyboard focus", () => {
-  const dom = page();
-  const doc = dom.window.document;
-  doc.querySelector('[data-filter="systems"]').click();
-  let previous;
-  for (let i = 0; i < 4; i++) {
-    doc.querySelector("#deal-project").click();
-    const chosen = doc.querySelector(".is-dealt");
-    assert.ok(chosen);
-    assert.equal(chosen.hidden, false);
-    assert.equal(chosen.dataset.category, "systems");
-    assert.notEqual(chosen, previous);
-    assert.equal(doc.activeElement, chosen.querySelector("h3"));
-    assert.ok(
-      doc
-        .querySelector("#deal-status")
-        .textContent.includes(chosen.querySelector("h3").textContent),
-    );
-    previous = chosen;
-  }
-  doc.querySelector('[data-filter="software"]').click();
-  assert.equal(doc.querySelector(".is-dealt"), null);
-  assert.equal(doc.querySelector("#deal-status").textContent, "");
-  dom.window.close();
-});
-
-test("dealing respects reduced-motion preference", () => {
-  let scrollOptions;
-  const dom = page((win) => {
-    win.matchMedia = () => ({ matches: true });
-    win.HTMLElement.prototype.scrollIntoView = (options) => {
-      scrollOptions = options;
-    };
-  });
-  dom.window.document.querySelector("#deal-project").click();
-  assert.equal(scrollOptions.behavior, "instant");
-  dom.window.close();
-});
-
 test("professional portfolio excludes hobby content and links only the reviewed public project repositories", () => {
   const dom = new JSDOM(html);
   const doc = dom.window.document;
@@ -234,16 +169,176 @@ test("professional portfolio excludes hobby content and links only the reviewed 
   dom.window.close();
 });
 
-test("dealing handles a filter with a single project", () => {
+test("projects stay hidden until a spin, then each appears exactly once per round", () => {
   const dom = page();
   const doc = dom.window.document;
-  doc.querySelector('[data-filter="software"]').click();
-  for (let i = 0; i < 2; i++) {
-    doc.querySelector("#deal-project").click();
-    const selected = doc.querySelector(".is-dealt");
-    assert.equal(selected.querySelector("h3").textContent, "PyPhantom");
-    assert.equal(selected.hidden, false);
-    assert.equal(doc.querySelectorAll(".is-dealt").length, 1);
+  const cards = [...doc.querySelectorAll(".project-card")];
+  assert.ok(cards.every((card) => card.hidden));
+  assert.equal(doc.querySelector("#project-slot").hidden, false);
+  assert.equal(doc.querySelector("#slot-remaining").textContent, "3 / 3");
+  for (let round = 0; round < 3; round++) {
+    const seen = new Set();
+    for (let spin = 0; spin < cards.length; spin++) {
+      doc.querySelector("#spin-project").click();
+      const visible = cards.filter((card) => !card.hidden);
+      assert.equal(visible.length, 1);
+      assert.ok(!seen.has(visible[0]));
+      seen.add(visible[0]);
+      assert.equal(
+        doc.querySelector("#slot-remaining").textContent,
+        `${cards.length - spin - 1} / ${cards.length}`,
+      );
+      assert.ok(
+        doc
+          .querySelector("#slot-status")
+          .textContent.includes(visible[0].querySelector("h3").textContent),
+      );
+    }
+    assert.equal(seen.size, cards.length);
+    assert.match(
+      doc.querySelector("#slot-status").textContent,
+      /Round complete/,
+    );
   }
+  dom.window.close();
+});
+
+test("every project is eligible for the first spin", () => {
+  for (const [random, expected] of [
+    [0, 0],
+    [0.5, 1],
+    [0.999, 2],
+  ]) {
+    const dom = page((win) => {
+      win.Math.random = () => random;
+    });
+    const cards = [...dom.window.document.querySelectorAll(".project-card")];
+    dom.window.document.querySelector("#spin-project").click();
+    assert.equal(
+      cards.findIndex((card) => !card.hidden),
+      expected,
+    );
+    dom.window.close();
+  }
+});
+
+test("animated spins lock out repeated clicks and reveal only on completion", () => {
+  const timers = [];
+  const dom = page((win) => {
+    win.matchMedia = () => ({ matches: false });
+    win.setTimeout = (callback) => {
+      timers.push(callback);
+      return timers.length;
+    };
+  });
+  const doc = dom.window.document;
+  const button = doc.querySelector("#spin-project");
+  button.focus();
+  button.click();
+  assert.equal(button.disabled, true);
+  assert.equal(
+    doc.querySelector("#project-results").getAttribute("aria-busy"),
+    "true",
+  );
+  assert.ok(
+    [...doc.querySelectorAll(".project-card")].every((card) => card.hidden),
+  );
+  button.dispatchEvent(new dom.window.MouseEvent("click"));
+  assert.equal(timers.length, 1);
+  timers.shift()();
+  assert.equal(button.disabled, false);
+  assert.equal(doc.querySelector("#slot-remaining").textContent, "2 / 3");
+  assert.equal(
+    [...doc.querySelectorAll(".project-card")].filter((card) => !card.hidden)
+      .length,
+    1,
+  );
+  assert.equal(
+    doc.querySelector("#project-results").getAttribute("aria-busy"),
+    "false",
+  );
+  assert.ok(doc.activeElement.matches(".project-card h3"));
+  const symbols = [...doc.querySelectorAll(".reel-cell")].map(
+    (cell) => cell.textContent,
+  );
+  assert.equal(symbols.length, 3);
+  assert.equal(new Set(symbols).size, 1);
+  button.click();
+  assert.equal(timers.length, 1);
+  timers.shift()();
+  assert.equal(doc.querySelector("#slot-remaining").textContent, "1 / 3");
+  dom.window.close();
+});
+
+test("reduced motion reveals immediately without an animation timer", () => {
+  let timers = 0;
+  const dom = page((win) => {
+    win.setTimeout = () => {
+      timers++;
+    };
+  });
+  dom.window.document.querySelector("#spin-project").click();
+  assert.equal(timers, 0);
+  assert.equal(
+    dom.window.document.querySelector("#spin-project").disabled,
+    false,
+  );
+  assert.equal(
+    [...dom.window.document.querySelectorAll(".project-card")].filter(
+      (card) => !card.hidden,
+    ).length,
+    1,
+  );
+  dom.window.close();
+});
+
+test("the pool adapts to one, zero, and more than three projects", () => {
+  for (const size of [0, 1, 5]) {
+    const dom = page((win) => {
+      const grid = win.document.querySelector(".project-grid");
+      const template = grid.firstElementChild.cloneNode(true);
+      grid.replaceChildren();
+      for (let i = 0; i < size; i++) {
+        const card = template.cloneNode(true);
+        card.querySelector("h3").textContent = `Project ${i}`;
+        grid.append(card);
+      }
+    });
+    const doc = dom.window.document;
+    if (!size) {
+      assert.equal(doc.querySelector("#project-slot").hidden, true);
+      doc.querySelector("#spin-project").click();
+    } else {
+      for (let round = 0; round < 2; round++) {
+        const seen = new Set();
+        for (let i = 0; i < size; i++) {
+          doc.querySelector("#spin-project").click();
+          const visible = [...doc.querySelectorAll(".project-card")].filter(
+            (card) => !card.hidden,
+          );
+          assert.equal(visible.length, 1);
+          seen.add(visible[0]);
+        }
+        assert.equal(seen.size, size);
+      }
+    }
+    dom.window.close();
+  }
+});
+
+test("finishing a spin does not steal focus after the visitor tabs away", () => {
+  let finish;
+  const dom = page((win) => {
+    win.matchMedia = () => ({ matches: false });
+    win.setTimeout = (callback) => {
+      finish = callback;
+    };
+  });
+  const doc = dom.window.document;
+  doc.querySelector("#spin-project").click();
+  const other = doc.querySelector(".nav-links a");
+  other.focus();
+  finish();
+  assert.equal(doc.activeElement, other);
   dom.window.close();
 });

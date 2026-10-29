@@ -221,7 +221,7 @@
               <p class="eyebrow section-label">
                 <span aria-hidden="true">♣</span> PUBLIC GITHUB PROJECTS
               </p>
-              <h2 id="projects-title">Engineering, in code.</h2>
+              <h2 id="projects-title">Spin for a project.</h2>
             </div>
 
             <div class="project-actions">
@@ -231,43 +231,66 @@
                 target="_blank"
                 rel="noopener noreferrer"
                 >Explore GitHub <span aria-hidden="true">↗</span></a
-              ><button type="button" id="deal-project" hidden>
-                Deal me a project <span aria-hidden="true">⚀</span>
-              </button>
-              <p id="deal-status" class="sr-only" role="status"></p>
+              >
             </div>
           </div>
-          <div class="project-toolbar">
-            <p>
-              Independent projects in infrastructure, integration, and
-              networking.
+
+          <div class="slot-machine" id="project-slot" hidden>
+            <div class="slot-marquee">
+              <span aria-hidden="true">♠</span><span>THE PROJECT MACHINE</span
+              ><span aria-hidden="true">♦</span>
+            </div>
+            <p class="slot-instructions" id="slot-instructions">
+              One spin. One project. No repeats until you have seen them all.
             </p>
-            <div
-              class="filters"
-              role="group"
-              aria-label="Filter projects"
-              hidden
-            >
+            <div class="slot-reels" aria-hidden="true">
+              <div class="slot-reel">
+                <div class="reel-strip">
+                  <span class="reel-cell">?</span>
+                </div>
+              </div>
+              <div class="slot-reel">
+                <div class="reel-strip">
+                  <span class="reel-cell">?</span>
+                </div>
+              </div>
+              <div class="slot-reel">
+                <div class="reel-strip">
+                  <span class="reel-cell">?</span>
+                </div>
+              </div>
+            </div>
+            <div class="slot-controls">
+              <div class="slot-count">
+                <span>PROJECTS LEFT IN THIS ROUND</span
+                ><strong id="slot-remaining"></strong>
+              </div>
               <button
                 type="button"
-                class="is-active"
-                data-filter="all"
-                aria-pressed="true"
+                id="spin-project"
+                aria-describedby="slot-instructions"
+                aria-controls="project-results"
               >
-                All work</button
-              ><button type="button" data-filter="systems" aria-pressed="false">
-                Infrastructure</button
-              ><button
-                type="button"
-                data-filter="software"
-                aria-pressed="false"
-              >
-                Integrations
+                Spin for a project <span aria-hidden="true">↻</span>
               </button>
             </div>
+            <p
+              class="slot-status"
+              id="slot-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              Ready when you are.
+            </p>
+            <p class="slot-empty" id="slot-empty">
+              Your next project is one spin away.
+            </p>
           </div>
-          <p class="sr-only" id="filter-status" role="status"></p>
-          <div class="project-grid">
+          <div
+            class="project-grid"
+            id="project-results"
+          >
             <article class="project-card feature-wide" data-category="systems">
               <span class="project-rank" aria-hidden="true">A</span>
               <div class="project-content">
